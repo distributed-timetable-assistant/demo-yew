@@ -6,6 +6,7 @@ RUN cargo install trunk
 WORKDIR /app
 
 COPY Cargo.toml ./
+COPY index.scss .
 COPY index.html .
 COPY Trunk.toml .
 COPY src ./src
