@@ -20,7 +20,7 @@ jobs:
       image-tag: ${{ steps.meta.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -49,7 +49,7 @@ jobs:
       - package
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/${{ vars.GITOPS_PROJECT_NAME }}"
           token: ${{ secrets.GIT_TOKEN }}
