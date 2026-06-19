@@ -1,0 +1,70 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  common:
+    uses: ./.github/workflows/common.yml
+    secrets: inherit
+
+  package:
+    runs-on: ubuntu-latest
+
+    needs:
+      - common
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: "${{ vars.DOCKERHUB_USERNAME }}/${{ vars.ORG_NAME }}.${{ vars.PROJECT_NAME }}"
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    needs:
+      - package
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ vars.GITOPS_PROJECT_NAME }}"
+          token: ${{ secrets.GIT_TOKEN }}
+
+      - run: |
+          sed -i "/^ *- name: ${{ vars.DOCKERHUB_USERNAME }}\/${{ vars.ORG_NAME }}\.${{ vars.PROJECT_NAME }} *$/,/^ *newTag: .*/ s/\(newTag: \).*/\1${{ needs.package.outputs.image-tag }}/g" \
+            ${{ vars.PROJECT_NAME }}/overlays/stage/kustomization.yaml
+
+      - name: Git config
+        run: |
+          git config --global user.name "${{ vars.GIT_USER_NAME }}"
+          git config --global user.email "${{ vars.GIT_USER_EMAIL }}"
+
+      - name: Git commit
+        run: |
+          git commit -am "ci(${{ vars.PROJECT_NAME }}): update image with tag=(${{ needs.package.outputs.image-tag }})" || true
+
+      - run: git push origin
