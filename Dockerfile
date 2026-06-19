@@ -8,7 +8,6 @@ WORKDIR /app
 COPY Cargo.toml ./
 COPY index.html .
 COPY Trunk.toml .
-COPY assets ./assets
 COPY src ./src
 
 RUN trunk build --release
